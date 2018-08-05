@@ -25,13 +25,27 @@ namespace CommunityPortal.Controllers
         }
 
         [HttpPost("Register")]
-        public async Task<IActionResult> Register([FromBody] CreateUserRequest request)
+        public async Task<IActionResult> Register([FromBody] UserRequest request)
         {
             var hash = SHA256.Create();
+            var password = Encoding.ASCII.GetString(hash.ComputeHash(Encoding.ASCII.GetBytes(request.Password)));
+
+            var userExists = context.Users
+                .Where(u => u.UserName == request.UserName)
+                .Count() > 0;
+
+            if (userExists)
+            {
+                return BadRequest
+                    (
+                        String.Format("User Name \"{0}\" is already taken", request.UserName)
+                    );
+            }
+
             context.Users.Add(new User()
             {
                 UserName = request.UserName,
-                Password = Encoding.ASCII.GetString(hash.ComputeHash(Encoding.ASCII.GetBytes(request.Password))),
+                Password = password,
                 Role_ID = 1,
                 CreateDateUtc = DateTime.UtcNow
             });
@@ -49,10 +63,45 @@ namespace CommunityPortal.Controllers
                 .Count() > 0;
         }
 
-        [HttpPost("Login")]
-        public async Task<IActionResult> Login([FromBody] CreateUserRequest request)
+        [HttpPost("ChangePassword")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
         {
+            var hash = SHA256.Create();
+            var password = Encoding.ASCII.GetString(hash.ComputeHash(Encoding.ASCII.GetBytes(request.CurrentPassword)));
+
+            User user;
+
+            try
+            {
+                user = context.Users
+                        .Where(u => u.UserName == request.UserName && u.Password == password)
+                        .Select(r => r)
+                        .Single();
+            }
+            catch (Exception)
+            {
+                return BadRequest();
+            }
+
+
+            user.Password = Encoding.ASCII.GetString(hash.ComputeHash(Encoding.ASCII.GetBytes(request.NewPassword)));
+
+            context.Users.Update(user);
+
+            var result = await context.SaveChangesAsync();
+
             return Ok();
+        }
+
+        [HttpPost("Authenticate")]
+        public bool Authenticate([FromBody] UserRequest request)
+        {
+            var hash = SHA256.Create();
+            var password = Encoding.ASCII.GetString(hash.ComputeHash(Encoding.ASCII.GetBytes(request.Password)));
+
+            return context.Users
+                .Where(u => u.UserName == request.UserName && u.Password == password && u.IsActive == true)
+                .Count() > 0;
         }
     }
 }

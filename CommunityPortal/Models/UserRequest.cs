@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace CommunityPortal.Models
 {
-    public class CreateUserRequest
+    public class UserRequest
     {
         public string UserName { get; set; }
         public string Password { get; set; }
     }
 
-    public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
+    public class UserRequestValidator : AbstractValidator<UserRequest>
     {
-        public CreateUserRequestValidator()
+        public UserRequestValidator()
         {
             RuleFor(e => e.UserName)
                 .NotEmpty();
